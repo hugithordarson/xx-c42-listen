@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<data-map xmlns="http://cayenne.apache.org/schema/10/modelMap"
+	 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	 xsi:schemaLocation="http://cayenne.apache.org/schema/10/modelMap https://cayenne.apache.org/schema/10/modelMap.xsd"
+	 project-version="10">
+	<property name="defaultPackage" value="xxc42.data"/>
+	<db-entity name="cm_division">
+		<db-attribute name="id" type="INTEGER" isPrimaryKey="true" isGenerated="true" isMandatory="true"/>
+		<db-attribute name="manager_id" type="INTEGER"/>
+		<db-attribute name="name" type="VARCHAR" length="1024"/>
+	</db-entity>
+	<db-entity name="cm_person">
+		<db-attribute name="division_id" type="INTEGER"/>
+		<db-attribute name="id" type="INTEGER" isPrimaryKey="true" isGenerated="true" isMandatory="true"/>
+		<db-attribute name="last_added_child_id" type="INTEGER"/>
+		<db-attribute name="name" type="VARCHAR" length="100"/>
+		<db-attribute name="parent_id" type="INTEGER"/>
+	</db-entity>
+	<obj-entity name="Division" className="xxc42.data.Division" dbEntityName="cm_division">
+		<obj-attribute name="name" type="java.lang.String" db-attribute-path="name"/>
+	</obj-entity>
+	<obj-entity name="Person" className="xxc42.data.Person" dbEntityName="cm_person">
+		<obj-attribute name="name" type="java.lang.String" db-attribute-path="name"/>
+	</obj-entity>
+	<db-relationship name="employees" source="cm_division" target="cm_person" toMany="true">
+		<db-attribute-pair source="id" target="division_id"/>
+	</db-relationship>
+	<db-relationship name="manager" source="cm_division" target="cm_person">
+		<db-attribute-pair source="manager_id" target="id"/>
+	</db-relationship>
+	<db-relationship name="children" source="cm_person" target="cm_person" toMany="true">
+		<db-attribute-pair source="id" target="parent_id"/>
+	</db-relationship>
+	<db-relationship name="division" source="cm_person" target="cm_division">
+		<db-attribute-pair source="division_id" target="id"/>
+	</db-relationship>
+	<db-relationship name="lastAddedChild" source="cm_person" target="cm_person">
+		<db-attribute-pair source="last_added_child_id" target="id"/>
+	</db-relationship>
+	<db-relationship name="managed_divisions" source="cm_person" target="cm_division" toMany="true">
+		<db-attribute-pair source="id" target="manager_id"/>
+	</db-relationship>
+	<db-relationship name="parent" source="cm_person" target="cm_person">
+		<db-attribute-pair source="parent_id" target="id"/>
+	</db-relationship>
+	<obj-relationship name="employees" source="Division" target="Person" deleteRule="Deny" db-relationship-path="employees"/>
+	<obj-relationship name="manager" source="Division" target="Person" deleteRule="Nullify" db-relationship-path="manager"/>
+	<obj-relationship name="children" source="Person" target="Person" deleteRule="Deny" db-relationship-path="children"/>
+	<obj-relationship name="division" source="Person" target="Division" deleteRule="Nullify" db-relationship-path="division"/>
+	<obj-relationship name="lastAddedChild" source="Person" target="Person" deleteRule="Nullify" db-relationship-path="lastAddedChild"/>
+	<obj-relationship name="managed_divisions" source="Person" target="Division" deleteRule="Deny" db-relationship-path="managed_divisions"/>
+	<obj-relationship name="parent" source="Person" target="Person" deleteRule="Nullify" db-relationship-path="parent"/>
+</data-map>
