@@ -1,7 +1,6 @@
 package xxc42;
 
 import java.util.Map.Entry;
-import java.util.UUID;
 
 import org.apache.cayenne.Cayenne;
 import org.apache.cayenne.ObjectContext;
@@ -12,6 +11,8 @@ import org.apache.cayenne.commitlog.model.ObjectChange;
 import org.apache.cayenne.commitlog.model.ToManyRelationshipChange;
 import org.apache.cayenne.commitlog.model.ToOneRelationshipChange;
 
+import xxc42.data.Company;
+import xxc42.data.Division;
 import xxc42.data.Person;
 
 /**
@@ -48,15 +49,27 @@ public class OnPostCommitListener implements CommitLogListener {
 				System.out.println( entry.getKey() + " : " + entry.getValue().getAdded() + " : " + entry.getValue().getRemoved() );
 			}
 
-			System.out.println();
-			System.out.println( " ------------------------------------------" );
-			System.out.println( " -> STARTING DB WORK IN AFTERUPDATELISTENER" );
-			final ObjectContext newContext = DB.runtime().newContext();
-			final Person p = (Person)Cayenne.objectForPK( originatingContext, objectChange.getPostCommitId() );
-			p.setName( UUID.randomUUID().toString() );
-			newContext.commitChanges();
-			System.out.println( " -> ENDING DB WORK IN AFTERUPDATELISTENER" );
-			System.out.println();
+			final Object changedObject = Cayenne.objectForPK( originatingContext, objectChange.getPostCommitId() );
+
+			if( changedObject instanceof Person person ) {
+				final Company company = originatingContext.newObject( Company.class );
+				company.getObjectContext().commitChanges();
+				System.out.println();
+				System.out.println( " ------------------------------------------" );
+				System.out.println( " -> STARTING DB WORK IN AFTERUPDATELISTENER" );
+				Division d = originatingContext.newObject( Division.class );
+				d.setName( "Enn ein deildin" );
+				d.getObjectContext().commitChanges();
+				d.setCompany( originatingContext.newObject( Company.class ) );
+				d.getObjectContext().commitChanges();
+				System.out.println( " -> ENDING DB WORK IN AFTERUPDATELISTENER" );
+				System.out.println();
+			}
+
+			//			final ObjectContext newContext = DB.runtime().newContext();
+			//			final Person p = (Person)Cayenne.objectForPK( newContext, objectChange.getPostCommitId() );
+			//			p.setName( UUID.randomUUID().toString() );
+			//			newContext.commitChanges();
 		}
 	}
 }

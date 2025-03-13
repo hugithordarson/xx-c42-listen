@@ -4,7 +4,12 @@
 	 xsi:schemaLocation="http://cayenne.apache.org/schema/10/modelMap https://cayenne.apache.org/schema/10/modelMap.xsd"
 	 project-version="10">
 	<property name="defaultPackage" value="xxc42.data"/>
+	<db-entity name="cm_company">
+		<db-attribute name="id" type="INTEGER" isPrimaryKey="true" isGenerated="true" isMandatory="true"/>
+		<db-attribute name="name" type="VARCHAR" length="100"/>
+	</db-entity>
 	<db-entity name="cm_division">
+		<db-attribute name="company_id" type="INTEGER"/>
 		<db-attribute name="id" type="INTEGER" isPrimaryKey="true" isGenerated="true" isMandatory="true"/>
 		<db-attribute name="manager_id" type="INTEGER"/>
 		<db-attribute name="name" type="VARCHAR" length="1024"/>
@@ -16,12 +21,21 @@
 		<db-attribute name="name" type="VARCHAR" length="100"/>
 		<db-attribute name="parent_id" type="INTEGER"/>
 	</db-entity>
+	<obj-entity name="Company" className="xxc42.data.Company" dbEntityName="cm_company">
+		<obj-attribute name="name" type="java.lang.String" db-attribute-path="name"/>
+	</obj-entity>
 	<obj-entity name="Division" className="xxc42.data.Division" dbEntityName="cm_division">
 		<obj-attribute name="name" type="java.lang.String" db-attribute-path="name"/>
 	</obj-entity>
 	<obj-entity name="Person" className="xxc42.data.Person" dbEntityName="cm_person">
 		<obj-attribute name="name" type="java.lang.String" db-attribute-path="name"/>
 	</obj-entity>
+	<db-relationship name="divisions" source="cm_company" target="cm_division" toMany="true">
+		<db-attribute-pair source="id" target="company_id"/>
+	</db-relationship>
+	<db-relationship name="company" source="cm_division" target="cm_company">
+		<db-attribute-pair source="company_id" target="id"/>
+	</db-relationship>
 	<db-relationship name="employees" source="cm_division" target="cm_person" toMany="true">
 		<db-attribute-pair source="id" target="division_id"/>
 	</db-relationship>
@@ -43,6 +57,8 @@
 	<db-relationship name="parent" source="cm_person" target="cm_person">
 		<db-attribute-pair source="parent_id" target="id"/>
 	</db-relationship>
+	<obj-relationship name="divisions" source="Company" target="Division" deleteRule="Deny" db-relationship-path="divisions"/>
+	<obj-relationship name="company" source="Division" target="Company" deleteRule="Nullify" db-relationship-path="company"/>
 	<obj-relationship name="employees" source="Division" target="Person" deleteRule="Deny" db-relationship-path="employees"/>
 	<obj-relationship name="manager" source="Division" target="Person" deleteRule="Nullify" db-relationship-path="manager"/>
 	<obj-relationship name="children" source="Person" target="Person" deleteRule="Deny" db-relationship-path="children"/>
