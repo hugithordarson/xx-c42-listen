@@ -1,9 +1,9 @@
 package xxc42;
 
-import java.util.HashSet;
-import java.util.Set;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
-import org.apache.cayenne.Cayenne;
 import org.apache.cayenne.ObjectContext;
 import org.apache.cayenne.commitlog.CommitLogListener;
 import org.apache.cayenne.commitlog.model.ChangeMap;
@@ -16,19 +16,18 @@ import org.apache.cayenne.commitlog.model.ObjectChangeType;
 
 public class OnPostCommitListener implements CommitLogListener {
 
+	/**
+	 * Keep track of all of our changes
+	 */
+	public static final List<ChangeMap> loggedChanges = Collections.synchronizedList( new ArrayList<>() );
+
 	@Override
-	public void onPostCommit( ObjectContext originatingContext, ChangeMap changes ) {
+	public void onPostCommit( ObjectContext originatingContext, ChangeMap changeMap ) {
 
-		for( ObjectChange objectChange : changes.getUniqueChanges() ) {
+		for( ObjectChange objectChange : changeMap.getUniqueChanges() ) {
+			// We're only keeping track of updates for the test
 			if( objectChange.getType() == ObjectChangeType.UPDATE ) {
-				final DoesStuffAfterUpdate changedObject = (DoesStuffAfterUpdate)Cayenne.objectForPK( DB.runtime().newContext(), objectChange.getPostCommitId() );
-
-				final Set<String> changedKeys = new HashSet<>();
-				changedKeys.addAll( objectChange.getAttributeChanges().keySet() );
-				changedKeys.addAll( objectChange.getToManyRelationshipChanges().keySet() );
-				changedKeys.addAll( objectChange.getToOneRelationshipChanges().keySet() );
-
-				changedObject.afterUpdateAction( changedKeys );
+				loggedChanges.add( changeMap );
 			}
 		}
 	}

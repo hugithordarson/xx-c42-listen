@@ -1,14 +1,20 @@
 package xxc42;
 
+import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+
 import org.apache.cayenne.ObjectContext;
 import org.apache.cayenne.configuration.server.ServerRuntime;
 import org.apache.cayenne.query.ObjectSelect;
 
+import xxc42.data.Division;
 import xxc42.data.Person;
 
 public class Main {
 
-	public static void main( String[] args ) {
+	public static void main( String[] args ) throws InterruptedException {
 		ServerRuntime serverRuntime = DB.runtime();
 
 		ObjectContext oc = serverRuntime.newContext();
@@ -17,24 +23,32 @@ public class Main {
 		log( "Generating schema" );
 		ObjectSelect.query( Person.class ).select( oc );
 
-		Person me = oc.newObject( Person.class );
-		Person dad = oc.newObject( Person.class );
-
-		log( "Commit 1 -- creating objects" );
+		// Create the Division object we're going to be working on
+		Division division = oc.newObject( Division.class );
+		division.setName( UUID.randomUUID().toString() );
 		oc.commitChanges();
 
-		me.setParent( dad );
+		ExecutorService executor = Executors.newFixedThreadPool( 2 );
 
-		log( "Commit 2 -- added first reference" );
-		oc.commitChanges();
+		ObjectContext parentOC = DB.runtime().newContext();
 
-		dad.setParent( me );
+		for( int i = 1000; i > 0; i-- ) {
+			executor.submit( () -> {
+				ObjectContext threadLocalOC = DB.runtime().newContext( parentOC );
+				Division localDivision = threadLocalOC.localObject( division );
+				localDivision.setName( UUID.randomUUID().toString() );
+				threadLocalOC.commitChanges();
+			} );
+		}
 
-		log( "Commit 3 -- added second reference, creating a circle. If you're on Cayenne v4.2, here's where we fail" );
-		oc.commitChanges();
+		parentOC.commitChanges();
+
+		executor.awaitTermination( 5, TimeUnit.SECONDS );
+
+		log( "The number of logged updates is: " + OnPostCommitListener.loggedChanges.size() );
 	}
 
-	private static void log( final String message ) {
+	public static void log( final String message ) {
 		System.out.println( "============================" );
 		System.out.println( message );
 		System.out.println( "============================" );

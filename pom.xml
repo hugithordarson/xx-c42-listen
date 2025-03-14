@@ -7,7 +7,7 @@
 	<version>0.0.1-SNAPSHOT</version>
 	<name>xx-c42-listen</name>
 	<properties>
-		<cayenne.version>4.2.2-SNAPSHOT</cayenne.version>
+		<cayenne.version>4.2.1</cayenne.version>
 	</properties>
 	<build>
 		<plugins>
@@ -24,7 +24,8 @@
 				<artifactId>cayenne-maven-plugin</artifactId>
 				<version>${cayenne.version}</version>
 				<configuration>
-					<map>${project.basedir}/src/main/resources/cayenne/datamap.map.xml</map>
+					<map>
+						${project.basedir}/src/main/resources/cayenne/datamap.map.xml</map>
 					<destDir>${project.basedir}/src/main/java</destDir>
 				</configuration>
 				<executions>
@@ -43,11 +44,17 @@
 			<artifactId>cayenne-server</artifactId>
 			<version>${cayenne.version}</version>
 		</dependency>
+		<!-- https://mvnrepository.com/artifact/org.apache.cayenne/cayenne-di -->
+		<dependency>
+			<groupId>org.apache.cayenne</groupId>
+			<artifactId>cayenne-di</artifactId>
+			<version>${cayenne.version}</version>
+		</dependency>
 		<dependency>
 			<groupId>org.apache.cayenne</groupId>
 			<artifactId>cayenne-commitlog</artifactId>
 			<version>${cayenne.version}</version>
-		</dependency>		
+		</dependency>
 		<dependency>
 			<groupId>com.zaxxer</groupId>
 			<artifactId>HikariCP</artifactId>
