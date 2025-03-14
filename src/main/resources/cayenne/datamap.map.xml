@@ -6,10 +6,12 @@
 	<property name="defaultPackage" value="xxc42.data"/>
 	<db-entity name="change">
 		<db-attribute name="changed_attributes" type="VARCHAR" length="255"/>
+		<db-attribute name="entity_name" type="VARCHAR" length="255"/>
 		<db-attribute name="id" type="INTEGER" isPrimaryKey="true" isGenerated="true" isMandatory="true"/>
 	</db-entity>
 	<db-entity name="company">
 		<db-attribute name="id" type="INTEGER" isPrimaryKey="true" isGenerated="true" isMandatory="true"/>
+		<db-attribute name="manager_id" type="INTEGER"/>
 		<db-attribute name="name" type="VARCHAR" length="255"/>
 	</db-entity>
 	<db-entity name="division">
@@ -17,8 +19,13 @@
 		<db-attribute name="id" type="INTEGER" isPrimaryKey="true" isGenerated="true" isMandatory="true"/>
 		<db-attribute name="name" type="VARCHAR" length="1024"/>
 	</db-entity>
+	<db-entity name="person">
+		<db-attribute name="id" type="INTEGER" isPrimaryKey="true" isGenerated="true" isMandatory="true"/>
+		<db-attribute name="name" type="VARCHAR" length="255"/>
+	</db-entity>
 	<obj-entity name="Change" className="xxc42.data.Change" dbEntityName="change">
 		<obj-attribute name="changedAttributes" type="java.lang.String" db-attribute-path="changed_attributes"/>
+		<obj-attribute name="entityName" type="java.lang.String" db-attribute-path="entity_name"/>
 	</obj-entity>
 	<obj-entity name="Company" className="xxc42.data.Company" dbEntityName="company">
 		<obj-attribute name="name" type="java.lang.String" db-attribute-path="name"/>
@@ -26,12 +33,23 @@
 	<obj-entity name="Division" className="xxc42.data.Division" dbEntityName="division">
 		<obj-attribute name="name" type="java.lang.String" db-attribute-path="name"/>
 	</obj-entity>
+	<obj-entity name="Person" className="xxc42.data.Person" dbEntityName="person">
+		<obj-attribute name="name" type="java.lang.String" db-attribute-path="name"/>
+	</obj-entity>
 	<db-relationship name="divisions" source="company" target="division" toMany="true">
 		<db-attribute-pair source="id" target="company_id"/>
+	</db-relationship>
+	<db-relationship name="manager" source="company" target="person">
+		<db-attribute-pair source="manager_id" target="id"/>
 	</db-relationship>
 	<db-relationship name="company" source="division" target="company">
 		<db-attribute-pair source="company_id" target="id"/>
 	</db-relationship>
+	<db-relationship name="companies" source="person" target="company" toMany="true">
+		<db-attribute-pair source="id" target="manager_id"/>
+	</db-relationship>
 	<obj-relationship name="divisions" source="Company" target="Division" deleteRule="Deny" db-relationship-path="divisions"/>
+	<obj-relationship name="manager" source="Company" target="Person" deleteRule="Nullify" db-relationship-path="manager"/>
 	<obj-relationship name="company" source="Division" target="Company" deleteRule="Nullify" db-relationship-path="company"/>
+	<obj-relationship name="companies" source="Person" target="Company" deleteRule="Deny" db-relationship-path="companies"/>
 </data-map>

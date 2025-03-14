@@ -33,6 +33,7 @@ import com.zaxxer.hikari.HikariDataSource;
 import xxc42.data.Change;
 import xxc42.data.Company;
 import xxc42.data.Division;
+import xxc42.data.Person;
 
 public class Main {
 
@@ -59,8 +60,13 @@ public class Main {
 		company.setName( UUID.randomUUID().toString() );
 		company.getObjectContext().commitChanges();
 
+		// Create the PErson object we're going to link up
+		Person person = runtime.newContext().newObject( Person.class );
+		person.setName( UUID.randomUUID().toString() );
+		person.getObjectContext().commitChanges();
+
 		// Using a high level of concurrency. A concurrency level of '1' won't show any problems, but as the level is raised, more commits get lost.
-		ExecutorService executor = Executors.newFixedThreadPool( 12 );
+		ExecutorService executor = Executors.newFixedThreadPool( 1 );
 
 		final int numberOfChangesToMake = 1000;
 
@@ -78,11 +84,17 @@ public class Main {
 				localDivision1.setCompany( oc1.localObject( company ) );
 				localDivision2.setCompany( oc2.localObject( company ) );
 
+				oc1.localObject( person ).addToCompanies( oc1.localObject( company ) );
+				oc2.localObject( company ).setManager( oc2.localObject( person ) );
+
+				System.out.println( "Committing in OC 1" );
 				oc1.commitChanges();
+				System.out.println( "Committing in OC 2" );
 				oc2.commitChanges();
 			} );
 		}
 
+		executor.shutdown();
 		executor.awaitTermination( 5, TimeUnit.SECONDS );
 
 		log( "The number of logged updates is %s. Expected %s ".formatted( loggedChanges.size(), numberOfChangesToMake ) );
@@ -92,7 +104,7 @@ public class Main {
 				.select( runtime.newContext() );
 
 		for( Change change : changes ) {
-			System.out.println( change.getChangedAttributes() );
+			System.out.println( change.getEntityName() + " : " + change.getChangedAttributes() );
 		}
 
 		System.out.println( "Logged changes are: " + changes.size() );
@@ -137,6 +149,7 @@ public class Main {
 				ServerModule.setSnapshotCacheSize( binder, 2097152 );
 			}
 		};
+
 		builder.addModule( cachePropertiesModule );
 
 		return builder.build();
@@ -144,31 +157,34 @@ public class Main {
 
 	public static class OnPostCommitListener implements CommitLogListener {
 
-		private static final ExecutorService service = Executors.newFixedThreadPool( 1 );
+		//		private static final ExecutorService service = Executors.newFixedThreadPool( 1 );
 
 		@Override
 		public void onPostCommit( ObjectContext originatingContext, ChangeMap changeMap ) {
 
-			service.submit( () -> {
-				for( ObjectChange objectChange : changeMap.getUniqueChanges() ) {
-					// We're only keeping track of updates for the test
-					if( objectChange.getType() == ObjectChangeType.UPDATE ) {
-						final ObjectContext oc = runtime().newContext();
+			System.out.println( "changeMap: " + changeMap );
 
-						DataObject changedObject = (DataObject)Cayenne.objectForPK( oc, objectChange.getPostCommitId() );
+			//			service.submit( () -> {
+			for( ObjectChange objectChange : changeMap.getUniqueChanges() ) {
+				// We're only keeping track of updates for the test
+				if( objectChange.getType() == ObjectChangeType.UPDATE ) {
+					final ObjectContext oc = runtime().newContext();
 
-						Set<String> changedKeys = new HashSet<>();
-						changedKeys.addAll( objectChange.getAttributeChanges().keySet() );
-						changedKeys.addAll( objectChange.getToManyRelationshipChanges().keySet() );
-						changedKeys.addAll( objectChange.getToOneRelationshipChanges().keySet() );
+					DataObject changedObject = (DataObject)Cayenne.objectForPK( oc, objectChange.getPostCommitId() );
 
-						loggedChanges.add( changedKeys );
-						final Change change = oc.newObject( Change.class );
-						change.setChangedAttributes( changedKeys.toString() );
-						change.getObjectContext().commitChanges();
-					}
+					Set<String> changedKeys = new HashSet<>();
+					changedKeys.addAll( objectChange.getAttributeChanges().keySet() );
+					changedKeys.addAll( objectChange.getToManyRelationshipChanges().keySet() );
+					changedKeys.addAll( objectChange.getToOneRelationshipChanges().keySet() );
+
+					loggedChanges.add( changedKeys );
+					final Change change = oc.newObject( Change.class );
+					change.setEntityName( objectChange.getPostCommitId().getEntityName() );
+					change.setChangedAttributes( changedKeys.toString() );
+					change.getObjectContext().commitChanges();
 				}
-			} );
+			}
+			//			} );
 		}
 	}
 }

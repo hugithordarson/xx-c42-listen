@@ -2,7 +2,8 @@
 <graphs xmlns="http://cayenne.apache.org/schema/10/graph">
 	<graph type="ER" scale="1.0">
 		<entity name="division" x="0.0" y="223.86" width="71.0" height="77.0"/>
-		<entity name="change" x="0.0" y="0.0" width="112.0" height="62.0"/>
-		<entity name="company" x="0.0" y="0.0" width="58.0" height="62.0"/>
+		<entity name="person" x="0.0" y="0.0" width="45.0" height="62.0"/>
+		<entity name="change" x="0.0" y="0.0" width="112.0" height="77.0"/>
+		<entity name="company" x="0.0" y="0.0" width="70.0" height="77.0"/>
 	</graph>
 </graphs>

@@ -21,8 +21,10 @@ public abstract class _Change extends BaseDataObject {
     public static final String ID_PK_COLUMN = "id";
 
     public static final StringProperty<String> CHANGED_ATTRIBUTES = PropertyFactory.createString("changedAttributes", String.class);
+    public static final StringProperty<String> ENTITY_NAME = PropertyFactory.createString("entityName", String.class);
 
     protected String changedAttributes;
+    protected String entityName;
 
 
     public void setChangedAttributes(String changedAttributes) {
@@ -35,6 +37,16 @@ public abstract class _Change extends BaseDataObject {
         return this.changedAttributes;
     }
 
+    public void setEntityName(String entityName) {
+        beforePropertyWrite("entityName", this.entityName, entityName);
+        this.entityName = entityName;
+    }
+
+    public String getEntityName() {
+        beforePropertyRead("entityName");
+        return this.entityName;
+    }
+
     @Override
     public Object readPropertyDirectly(String propName) {
         if(propName == null) {
@@ -44,6 +56,8 @@ public abstract class _Change extends BaseDataObject {
         switch(propName) {
             case "changedAttributes":
                 return this.changedAttributes;
+            case "entityName":
+                return this.entityName;
             default:
                 return super.readPropertyDirectly(propName);
         }
@@ -58,6 +72,9 @@ public abstract class _Change extends BaseDataObject {
         switch (propName) {
             case "changedAttributes":
                 this.changedAttributes = (String)val;
+                break;
+            case "entityName":
+                this.entityName = (String)val;
                 break;
             default:
                 super.writePropertyDirectly(propName, val);
@@ -76,12 +93,14 @@ public abstract class _Change extends BaseDataObject {
     protected void writeState(ObjectOutputStream out) throws IOException {
         super.writeState(out);
         out.writeObject(this.changedAttributes);
+        out.writeObject(this.entityName);
     }
 
     @Override
     protected void readState(ObjectInputStream in) throws IOException, ClassNotFoundException {
         super.readState(in);
         this.changedAttributes = (String)in.readObject();
+        this.entityName = (String)in.readObject();
     }
 
 }
