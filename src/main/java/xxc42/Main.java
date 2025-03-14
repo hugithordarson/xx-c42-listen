@@ -31,6 +31,7 @@ import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 
 import xxc42.data.Change;
+import xxc42.data.Company;
 import xxc42.data.Division;
 
 public class Main {
@@ -53,6 +54,11 @@ public class Main {
 		division.setName( UUID.randomUUID().toString() );
 		division.getObjectContext().commitChanges();
 
+		// Create the Company object we're going to link up
+		Company company = runtime.newContext().newObject( Company.class );
+		company.setName( UUID.randomUUID().toString() );
+		company.getObjectContext().commitChanges();
+
 		// Using a high level of concurrency. A concurrency level of '1' won't show any problems, but as the level is raised, more commits get lost.
 		ExecutorService executor = Executors.newFixedThreadPool( 12 );
 
@@ -60,17 +66,20 @@ public class Main {
 
 		for( int i = numberOfChangesToMake; i > 0; i-- ) {
 			executor.submit( () -> {
-				ObjectContext threadLocalChildOC1 = runtime.newContext();
-				ObjectContext threadLocalChildOC2 = runtime.newContext();
+				ObjectContext oc1 = runtime.newContext();
+				ObjectContext oc2 = runtime.newContext();
 
-				Division localDivision1 = threadLocalChildOC1.localObject( division );
-				Division localDivision2 = threadLocalChildOC2.localObject( division );
+				Division localDivision1 = oc1.localObject( division );
+				Division localDivision2 = oc2.localObject( division );
 
-				localDivision1.setName( UUID.randomUUID().toString() );
-				localDivision2.setName( UUID.randomUUID().toString() );
+				//				localDivision1.setName( UUID.randomUUID().toString() );
+				//				localDivision2.setName( UUID.randomUUID().toString() );
 
-				threadLocalChildOC2.commitChanges();
-				threadLocalChildOC1.commitChanges();
+				localDivision1.setCompany( oc1.localObject( company ) );
+				localDivision2.setCompany( oc2.localObject( company ) );
+
+				oc1.commitChanges();
+				oc2.commitChanges();
 			} );
 		}
 
@@ -82,11 +91,11 @@ public class Main {
 				.query( Change.class )
 				.select( runtime.newContext() );
 
-		System.out.println( "Logged changes are: " + changes.size() );
+		for( Change change : changes ) {
+			System.out.println( change.getChangedAttributes() );
+		}
 
-		//		for( Change change : changes ) {
-		//			System.out.println( change.getChangedAttributes() );
-		//		}
+		System.out.println( "Logged changes are: " + changes.size() );
 	}
 
 	public static ServerRuntime runtime() {
@@ -135,7 +144,7 @@ public class Main {
 
 	public static class OnPostCommitListener implements CommitLogListener {
 
-		private static final ExecutorService service = Executors.newFixedThreadPool( 12 );
+		private static final ExecutorService service = Executors.newFixedThreadPool( 1 );
 
 		@Override
 		public void onPostCommit( ObjectContext originatingContext, ChangeMap changeMap ) {
