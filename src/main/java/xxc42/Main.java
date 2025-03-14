@@ -10,7 +10,6 @@ import org.apache.cayenne.configuration.server.ServerRuntime;
 import org.apache.cayenne.query.ObjectSelect;
 
 import xxc42.data.Division;
-import xxc42.data.Person;
 
 public class Main {
 
@@ -21,18 +20,20 @@ public class Main {
 
 		// Touch the DB to separate out SQL logging for schema generation.
 		log( "Generating schema" );
-		ObjectSelect.query( Person.class ).select( oc );
+		ObjectSelect.query( Division.class ).select( oc );
 
 		// Create the Division object we're going to be working on
 		Division division = oc.newObject( Division.class );
 		division.setName( UUID.randomUUID().toString() );
 		oc.commitChanges();
 
-		ExecutorService executor = Executors.newFixedThreadPool( 2 );
+		ExecutorService executor = Executors.newFixedThreadPool( 12 );
 
 		ObjectContext parentOC = DB.runtime().newContext();
 
-		for( int i = 1000; i > 0; i-- ) {
+		final int numberOfChangesToMake = 1000;
+
+		for( int i = numberOfChangesToMake; i > 0; i-- ) {
 			executor.submit( () -> {
 				ObjectContext threadLocalOC = DB.runtime().newContext( parentOC );
 				Division localDivision = threadLocalOC.localObject( division );
@@ -45,7 +46,7 @@ public class Main {
 
 		executor.awaitTermination( 5, TimeUnit.SECONDS );
 
-		log( "The number of logged updates is: " + OnPostCommitListener.loggedChanges.size() );
+		log( "The number of logged updates is %s. Expected %s ".formatted( OnPostCommitListener.loggedChanges.size(), numberOfChangesToMake ) );
 	}
 
 	public static void log( final String message ) {

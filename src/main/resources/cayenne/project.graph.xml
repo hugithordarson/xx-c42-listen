@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <graphs xmlns="http://cayenne.apache.org/schema/10/graph">
 	<graph type="ER" scale="1.0">
-		<entity name="cm_person" x="146.35" y="0.0" width="116.0" height="107.0"/>
-		<entity name="cm_company" x="0.0" y="0.0" width="82.0" height="62.0"/>
 		<entity name="cm_division" x="0.0" y="223.86" width="76.0" height="92.0"/>
 	</graph>
 </graphs>
