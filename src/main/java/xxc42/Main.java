@@ -33,19 +33,17 @@ public class Main {
 
 	public static void main( String[] args ) throws InterruptedException {
 		ServerRuntime runtime = createRuntime();
-		ServerRuntime serverRuntime = runtime;
-
-		ObjectContext oc = serverRuntime.newContext();
 
 		// Touch the DB to separate out SQL logging for schema generation.
 		log( "Generating schema" );
-		ObjectSelect.query( Division.class ).select( oc );
+		ObjectSelect.query( Division.class ).select( runtime.newContext() );
 
 		// Create the Division object we're going to be working on
-		Division division = oc.newObject( Division.class );
+		Division division = runtime.newContext().newObject( Division.class );
 		division.setName( UUID.randomUUID().toString() );
-		oc.commitChanges();
+		division.getObjectContext().commitChanges();
 
+		// Using a high level of concurrency. A concurrency level of '1' won't show any problems, but as the level is raised, more commits get lost.
 		ExecutorService executor = Executors.newFixedThreadPool( 12 );
 
 		ObjectContext parentOC = runtime.newContext();
@@ -54,7 +52,8 @@ public class Main {
 
 		for( int i = numberOfChangesToMake; i > 0; i-- ) {
 			executor.submit( () -> {
-				// Creating a child editing context. If this is a 'root' OC
+				// Creating a child editing context.
+				// If this is a 'root' OC the problem won't manifest.
 				ObjectContext threadLocalChildOC = runtime.newContext( parentOC );
 
 				Division localDivision = threadLocalChildOC.localObject( division );
@@ -81,6 +80,7 @@ public class Main {
 
 		builder.addConfig( "cayenne/cayenne-project.xml" );
 
+		// Using Hikari only because it's used by the project where the problem manifested itself.
 		builder.addModule( b -> b.bind( DataSourceFactory.class ).toInstance( nodeDescriptor -> {
 			final HikariConfig config = new HikariConfig();
 			config.setDriverClassName( "org.h2.Driver" );
@@ -88,8 +88,7 @@ public class Main {
 			return new HikariDataSource( config );
 		} ) );
 
-		//		builder.addModule( CommitLogModule.extend().addListener( OnPostCommitListener.class ).module() );
-		builder.addModule( CommitLogModule.extend().addListener( OnPostCommitListener.class ).excludeFromTransaction().module() );
+		builder.addModule( CommitLogModule.extend().addListener( OnPostCommitListener.class ).module() );
 
 		return builder.build();
 	}
