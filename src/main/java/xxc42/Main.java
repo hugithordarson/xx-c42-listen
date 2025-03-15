@@ -25,7 +25,7 @@ public class Main {
 		ServerRuntime runtime = ServerRuntime
 				.builder()
 				.addConfig( "cayenne/cayenne-project.xml" )
-				.addModule( CommitLogModule.extend().addListener( MyCommitLogListener.class ).excludeFromTransaction().module() )
+				.addModule( CommitLogModule.extend().addListener( MyCommitLogListener.class ).excludeFromTransaction().module() ) // Note that the CommitLogListener is .excludeFromTransaction(). If it isn't, everything works seemingly fine.
 				.build();
 
 		runtime.getDataDomain().addListener( new MyPreUpdateListener() );
