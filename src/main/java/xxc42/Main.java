@@ -1,190 +1,87 @@
 package xxc42;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-
-import org.apache.cayenne.Cayenne;
-import org.apache.cayenne.DataObject;
 import org.apache.cayenne.ObjectContext;
+import org.apache.cayenne.PersistentObject;
+import org.apache.cayenne.annotation.PreUpdate;
 import org.apache.cayenne.commitlog.CommitLogListener;
 import org.apache.cayenne.commitlog.CommitLogModule;
 import org.apache.cayenne.commitlog.model.ChangeMap;
-import org.apache.cayenne.commitlog.model.ObjectChange;
-import org.apache.cayenne.commitlog.model.ObjectChangeType;
-import org.apache.cayenne.configuration.Constants;
-import org.apache.cayenne.configuration.server.DataSourceFactory;
-import org.apache.cayenne.configuration.server.ServerModule;
 import org.apache.cayenne.configuration.server.ServerRuntime;
-import org.apache.cayenne.configuration.server.ServerRuntimeBuilder;
-import org.apache.cayenne.di.Binder;
-import org.apache.cayenne.di.MapBuilder;
 import org.apache.cayenne.query.ObjectSelect;
 
-import com.zaxxer.hikari.HikariConfig;
-import com.zaxxer.hikari.HikariDataSource;
+import com.google.gson.GsonBuilder;
 
-import xxc42.data.Change;
 import xxc42.data.Company;
 import xxc42.data.Division;
-import xxc42.data.Person;
 
 public class Main {
 
-	/**
-	 * Keeps track of changes logged by our CommitLogListener
-	 */
-	public static final List<Set<String>> loggedChanges = Collections.synchronizedList( new ArrayList<>() );
-	private static ServerRuntime _runtime;
-
 	public static void main( String[] args ) throws InterruptedException {
-		ServerRuntime runtime = runtime();
 
-		// Touch the DB to separate out SQL logging for schema generation.
-		log( "Generating schema" );
-		ObjectSelect.query( Division.class ).select( runtime.newContext() );
+		//
+		// Create the runtime
+		//
 
-		// Create the Division object we're going to be working on
-		Division division = runtime.newContext().newObject( Division.class );
-		division.setName( UUID.randomUUID().toString() );
-		division.getObjectContext().commitChanges();
+		ServerRuntime runtime = ServerRuntime
+				.builder()
+				.addConfig( "cayenne/cayenne-project.xml" )
+				.addModule( CommitLogModule.extend().addListener( MyCommitLogListener.class ).excludeFromTransaction().module() )
+				.build();
 
-		// Create the Company object we're going to link up
-		Company company = runtime.newContext().newObject( Company.class );
-		company.setName( UUID.randomUUID().toString() );
-		company.getObjectContext().commitChanges();
+		runtime.getDataDomain().addListener( new MyPreUpdateListener() );
 
-		// Create the PErson object we're going to link up
-		Person person = runtime.newContext().newObject( Person.class );
-		person.setName( UUID.randomUUID().toString() );
-		person.getObjectContext().commitChanges();
-
-		// Using a high level of concurrency. A concurrency level of '1' won't show any problems, but as the level is raised, more commits get lost.
-		ExecutorService executor = Executors.newFixedThreadPool( 1 );
-
-		final int numberOfChangesToMake = 1000;
-
-		for( int i = numberOfChangesToMake; i > 0; i-- ) {
-			executor.submit( () -> {
-				ObjectContext oc1 = runtime.newContext();
-				ObjectContext oc2 = runtime.newContext();
-
-				Division localDivision1 = oc1.localObject( division );
-				Division localDivision2 = oc2.localObject( division );
-
-				//				localDivision1.setName( UUID.randomUUID().toString() );
-				//				localDivision2.setName( UUID.randomUUID().toString() );
-
-				localDivision1.setCompany( oc1.localObject( company ) );
-				localDivision2.setCompany( oc2.localObject( company ) );
-
-				oc1.localObject( person ).addToCompanies( oc1.localObject( company ) );
-				oc2.localObject( company ).setManager( oc2.localObject( person ) );
-
-				System.out.println( "Committing in OC 1" );
-				oc1.commitChanges();
-				System.out.println( "Committing in OC 2" );
-				oc2.commitChanges();
-			} );
-		}
-
-		executor.shutdown();
-		executor.awaitTermination( 5, TimeUnit.SECONDS );
-
-		log( "The number of logged updates is %s. Expected %s ".formatted( loggedChanges.size(), numberOfChangesToMake ) );
-
-		List<Change> changes = ObjectSelect
-				.query( Change.class )
+		log( "main() - Touching the DB just to generate the schema" );
+		ObjectSelect
+				.query( Division.class )
 				.select( runtime.newContext() );
 
-		for( Change change : changes ) {
-			System.out.println( change.getEntityName() + " : " + change.getChangedAttributes() );
-		}
+		log( "main() - Inserting data for testing on" );
+		ObjectContext oc = runtime.newContext();
+		Company company = oc.newObject( Company.class );
+		Division division = oc.newObject( Division.class );
+		division.setCompany( company );
+		oc.commitChanges();
 
-		System.out.println( "Logged changes are: " + changes.size() );
+		//
+		// OK, runtime, DB and test data in place, do some actual testing
+		//
+
+		log( "main() - Updating Company. @PreUpdate will change an attribute on the Company as well" );
+		company.setName( "New company name" );
+		oc.commitChanges();
+
+		log( "main() - Updating Division. @PreUpdate will change an attribute on the related Company" );
+		division.setName( "New division name" );
+		oc.commitChanges();
 	}
 
-	public static ServerRuntime runtime() {
-		if( _runtime == null ) {
-			_runtime = createRuntime();
-		}
-
-		return _runtime;
-	}
-
-	public static void log( final String message ) {
-		System.out.println( "============================" );
-		System.out.println( message );
-		System.out.println( "============================" );
-	}
-
-	public static ServerRuntime createRuntime() {
-		final ServerRuntimeBuilder builder = ServerRuntime.builder();
-
-		builder.addConfig( "cayenne/cayenne-project.xml" );
-
-		// Using Hikari only because it's used by the project where the problem manifested itself.
-		builder.addModule( b -> b.bind( DataSourceFactory.class ).toInstance( nodeDescriptor -> {
-			final HikariConfig config = new HikariConfig();
-			config.setMaximumPoolSize( 8 );
-			config.setDriverClassName( "org.h2.Driver" );
-			config.setJdbcUrl( "jdbc:h2:mem:testdb" );
-			return new HikariDataSource( config );
-		} ) );
-
-		builder.addModule( CommitLogModule.extend().addListener( OnPostCommitListener.class ).excludeFromTransaction().module() );
-
-		org.apache.cayenne.di.Module cachePropertiesModule = new org.apache.cayenne.di.Module() {
-			@Override
-			public void configure( Binder binder ) {
-				MapBuilder<String> props = binder.bindMap( String.class, Constants.PROPERTIES_MAP );
-				// https://cayenne.apache.org/docs/4.0/cayenne-guide/performance-tuning.html#turning-off-synchronization-of-objectcontexts
-				props.put( Constants.SERVER_CONTEXTS_SYNC_PROPERTY, "false" );
-				ServerModule.setSnapshotCacheSize( binder, 2097152 );
-			}
-		};
-
-		builder.addModule( cachePropertiesModule );
-
-		return builder.build();
-	}
-
-	public static class OnPostCommitListener implements CommitLogListener {
-
-		//		private static final ExecutorService service = Executors.newFixedThreadPool( 1 );
+	public static class MyCommitLogListener implements CommitLogListener {
 
 		@Override
 		public void onPostCommit( ObjectContext originatingContext, ChangeMap changeMap ) {
-
-			System.out.println( "changeMap: " + changeMap );
-
-			//			service.submit( () -> {
-			for( ObjectChange objectChange : changeMap.getUniqueChanges() ) {
-				// We're only keeping track of updates for the test
-				if( objectChange.getType() == ObjectChangeType.UPDATE ) {
-					final ObjectContext oc = runtime().newContext();
-
-					DataObject changedObject = (DataObject)Cayenne.objectForPK( oc, objectChange.getPostCommitId() );
-
-					Set<String> changedKeys = new HashSet<>();
-					changedKeys.addAll( objectChange.getAttributeChanges().keySet() );
-					changedKeys.addAll( objectChange.getToManyRelationshipChanges().keySet() );
-					changedKeys.addAll( objectChange.getToOneRelationshipChanges().keySet() );
-
-					loggedChanges.add( changedKeys );
-					final Change change = oc.newObject( Change.class );
-					change.setEntityName( objectChange.getPostCommitId().getEntityName() );
-					change.setChangedAttributes( changedKeys.toString() );
-					change.getObjectContext().commitChanges();
-				}
-			}
-			//			} );
+			log( "onPostCommit() received ChangeMap: " + new GsonBuilder().setPrettyPrinting().create().toJson( changeMap ) );
 		}
+	}
+
+	public static class MyPreUpdateListener {
+
+		@PreUpdate({ PersistentObject.class })
+		public void preUpdate( PersistentObject object ) {
+			if( object instanceof Company company ) {
+				log( "@PreUpdate performs a simple attribute change without accessing a relationship. This works fine, totally great ChangeMap coming in" );
+				company.setAddress( "SomeOtherAddress" );
+			}
+
+			if( object instanceof Division division ) {
+				log( "@PreUpdate changes an attribute on a related object. This results in OnPostCommitListener receiving an empty ChangeMap" );
+				division.getCompany().setAddress( "SomeAddress" );
+			}
+		}
+	}
+
+	static void log( String message ) {
+		System.out.println( "===================" );
+		System.out.println( message );
+		System.out.println( "===================" );
 	}
 }
