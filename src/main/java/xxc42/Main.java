@@ -19,7 +19,7 @@ public class Main {
 	public static void main( String[] args ) throws InterruptedException {
 
 		//
-		// Create the runtime
+		// Create the runtime and insert some test data
 		//
 
 		ServerRuntime runtime = ServerRuntime
