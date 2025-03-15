@@ -1,7 +1,6 @@
 package xxc42;
 
 import org.apache.cayenne.ObjectContext;
-import org.apache.cayenne.PersistentObject;
 import org.apache.cayenne.annotation.PreUpdate;
 import org.apache.cayenne.commitlog.CommitLogListener;
 import org.apache.cayenne.commitlog.CommitLogModule;
@@ -16,7 +15,7 @@ import xxc42.data.Division;
 
 public class Main {
 
-	public static void main( String[] args ) throws InterruptedException {
+	public static void main( String[] args ) {
 
 		//
 		// Create the runtime and insert some test data
@@ -65,17 +64,16 @@ public class Main {
 
 	public static class MyPreUpdateListener {
 
-		@PreUpdate({ PersistentObject.class })
-		public void preUpdate( PersistentObject object ) {
-			if( object instanceof Company company ) {
-				log( "@PreUpdate performs a simple attribute change without accessing a relationship. This works fine, totally great ChangeMap coming in" );
-				company.setAddress( "SomeOtherAddress" );
-			}
+		@PreUpdate({ Company.class })
+		public void preUpdate( Company company ) {
+			log( "@PreUpdate performs a simple attribute change without accessing a relationship. This works fine, totally great ChangeMap coming in" );
+			company.setAddress( "SomeOtherAddress" );
+		}
 
-			if( object instanceof Division division ) {
-				log( "@PreUpdate changes an attribute on a related object. This results in OnPostCommitListener receiving an empty ChangeMap" );
-				division.getCompany().setAddress( "SomeAddress" );
-			}
+		@PreUpdate({ Division.class })
+		public void preUpdate( Division division ) {
+			log( "@PreUpdate changes an attribute on a related object. This results in OnPostCommitListener receiving an empty ChangeMap" );
+			division.getCompany().setAddress( "SomeAddress" );
 		}
 	}
 
