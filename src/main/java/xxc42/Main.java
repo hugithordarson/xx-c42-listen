@@ -28,7 +28,7 @@ public class Main {
 
 		runtime.getDataDomain().addListener( new MyPreUpdateListener() );
 
-		log( "main() - Inserting tes data" );
+		log( "main() - Inserting test data" );
 		ObjectContext oc = runtime.newContext();
 		Company company = oc.newObject( Company.class );
 		Division division = oc.newObject( Division.class );
