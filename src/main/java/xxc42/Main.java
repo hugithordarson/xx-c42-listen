@@ -6,7 +6,6 @@ import org.apache.cayenne.commitlog.CommitLogListener;
 import org.apache.cayenne.commitlog.CommitLogModule;
 import org.apache.cayenne.commitlog.model.ChangeMap;
 import org.apache.cayenne.configuration.server.ServerRuntime;
-import org.apache.cayenne.query.ObjectSelect;
 
 import com.google.gson.GsonBuilder;
 
@@ -29,12 +28,7 @@ public class Main {
 
 		runtime.getDataDomain().addListener( new MyPreUpdateListener() );
 
-		log( "main() - Touching the DB just to generate the schema" );
-		ObjectSelect
-				.query( Division.class )
-				.select( runtime.newContext() );
-
-		log( "main() - Inserting data for testing on" );
+		log( "main() - Inserting tes data" );
 		ObjectContext oc = runtime.newContext();
 		Company company = oc.newObject( Company.class );
 		Division division = oc.newObject( Division.class );
