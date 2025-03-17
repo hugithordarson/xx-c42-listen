@@ -66,7 +66,7 @@ public class Main {
 
 		@PreUpdate({ Division.class })
 		public void preUpdate( Division division ) {
-			log( "@PreUpdate changes an attribute on a related object. This results in OnPostCommitListener receiving an empty ChangeMap" );
+			log( "@PreUpdate changes an attribute on a related object. This results in CommitLogListener receiving an empty ChangeMap" );
 			division.getCompany().setAddress( "SomeAddress" );
 		}
 	}
